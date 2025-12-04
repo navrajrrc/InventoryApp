@@ -1,28 +1,35 @@
-import json
 import boto3
-
-dynamodb = boto3.resource('dynamodb')
-table = dynamodb.Table('Inventory')
+import json
 
 def lambda_handler(event, context):
-    try:
-        item_id = event['pathParameters']['item_id']
-        location_id = int(event['queryStringParameters']['location_id'])
+    # Initialize DynamoDB client
+    dynamo_client = boto3.client('dynamodb')
+    table_name = 'sports-history-moments'
 
-        response = table.delete_item(
-            Key={
-                'item_id': item_id,
-                'location_id': location_id
-            }
-        )
-
-        return {
-            'statusCode': 200,
-            'body': json.dumps({'message': f'Item {item_id} deleted'})
-        }
-
-    except Exception as e:
+    # Extract the '_id' from the path parameters
+    if 'pathParameters' not in event or 'id' not in event['pathParameters']:
         return {
             'statusCode': 400,
-            'body': json.dumps({'error': str(e)})
+            'body': json.dumps("Missing 'id' path parameter")
+        }
+
+    key_value = event['pathParameters']['id']
+
+    # Prepare the key for DynamoDB
+    key = {
+        '_id': {'S': key_value}
+    }
+
+    # Attempt to delete the item from the table
+    try:
+        dynamo_client.delete_item(TableName=table_name, Key=key)
+        return {
+            'statusCode': 200,
+            'body': json.dumps(f"Item with ID {key_value} deleted successfully.")
+        }
+    except Exception as e:
+        print(e)
+        return {
+            'statusCode': 500,
+            'body': json.dumps(f"Error deleting item: {str(e)}")
         }
